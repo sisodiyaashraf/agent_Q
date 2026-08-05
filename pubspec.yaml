@@ -1,0 +1,25 @@
+name: agent_q
+description: "A new Flutter project."
+publish_to: 'none'
+version: 0.1.0
+
+environment:
+  sdk: ^3.10.4
+
+dependencies:
+  flutter:
+    sdk: flutter
+  bonfire: ^3.17.0
+  flutter_fireworks: ^1.0.8
+  game_levels_scrolling_map: ^0.0.7
+  games_services: ^5.0.0
+  shared_preferences: ^2.2.3
+  flame_splash_screen: ^0.3.1+2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
