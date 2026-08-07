@@ -80,9 +80,18 @@ class _HubScreenState extends State<HubScreen> with SingleTickerProviderStateMix
           }).toList(),
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: WorldConfig.worlds.map((world) => _buildWorldGrid(world)).toList(),
+      body: Container(
+        decoration: const BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage('assets/images/background_images/Hubevel-selectlobb.jpeg'),
+            fit: BoxFit.cover,
+            opacity: 0.2,
+          ),
+        ),
+        child: TabBarView(
+          controller: _tabController,
+          children: WorldConfig.worlds.map((world) => _buildWorldGrid(world)).toList(),
+        ),
       ),
     );
   }
@@ -158,7 +167,12 @@ class _HubScreenState extends State<HubScreen> with SingleTickerProviderStateMix
                   if (isBoss)
                     const Icon(Icons.warning, color: Colors.redAccent, size: 16)
                   else if (!isUnlocked)
-                    const Icon(Icons.lock, color: Colors.white24, size: 14),
+                    Image.asset(
+                      'assets/images/hud_and_ui_elements/Lock_icon__for_hub_level_entrances.png',
+                      width: 14,
+                      height: 14,
+                      color: Colors.white24,
+                    ),
                 ],
               ),
               const Spacer(),

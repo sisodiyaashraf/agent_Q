@@ -1,4 +1,6 @@
+import 'dart:math';
 import 'package:bonfire/bonfire.dart';
+import '../items/pickup_component.dart';
 
 class AlienSmallEnemy extends SimpleEnemy with BlockMovementCollision {
   final double damage;
@@ -15,21 +17,21 @@ class AlienSmallEnemy extends SimpleEnemy with BlockMovementCollision {
           speed: speed * 1.4, // Very fast
           animation: SimpleDirectionAnimation(
             idleRight: SpriteAnimation.fromFrameData(
-              Flame.images.fromCache('enemy_alien_small.png'),
+              Flame.images.fromCache('characters/Small_alien_enemy.png'),
               SpriteAnimationData.sequenced(
-                amount: 4,
-                stepTime: 0.15,
-                textureSize: Vector2(32, 32),
-                texturePosition: Vector2(0, 0),
+                amount: 1,
+                stepTime: 1.0,
+                textureSize: Vector2(677 / 6, 369 / 3),
+                texturePosition: Vector2(2 * (677 / 6), 1 * (369 / 3)),
               ),
             ),
             runRight: SpriteAnimation.fromFrameData(
-              Flame.images.fromCache('enemy_alien_small.png'),
+              Flame.images.fromCache('characters/Small_alien_enemy.png'),
               SpriteAnimationData.sequenced(
-                amount: 4,
-                stepTime: 0.1,
-                textureSize: Vector2(32, 32),
-                texturePosition: Vector2(0, 32),
+                amount: 1,
+                stepTime: 1.0,
+                textureSize: Vector2(677 / 6, 369 / 3),
+                texturePosition: Vector2(3 * (677 / 6), 1 * (369 / 3)),
               ),
             ),
           ),
@@ -37,6 +39,21 @@ class AlienSmallEnemy extends SimpleEnemy with BlockMovementCollision {
 
   @override
   Future<void> onLoad() async {
+    final alienImage = Flame.images.fromCache('characters/Small_alien_enemy.png');
+    final alienSheet = SpriteSheet(
+      image: alienImage,
+      srcSize: Vector2(677 / 6, 369 / 3),
+    );
+
+    animation = SimpleDirectionAnimation(
+      idleRight: alienSheet.createAnimation(row: 1, stepTime: 0.15, from: 2, to: 4),
+      runRight: alienSheet.createAnimation(row: 1, stepTime: 0.15, from: 2, to: 4),
+      idleUp: alienSheet.createAnimation(row: 0, stepTime: 0.15, from: 4, to: 6),
+      runUp: alienSheet.createAnimation(row: 0, stepTime: 0.15, from: 4, to: 6),
+      idleDown: alienSheet.createAnimation(row: 1, stepTime: 0.15, from: 0, to: 2),
+      runDown: alienSheet.createAnimation(row: 1, stepTime: 0.15, from: 0, to: 2),
+    );
+
     add(
       RectangleHitbox(
         size: Vector2(16, 16),
@@ -46,10 +63,23 @@ class AlienSmallEnemy extends SimpleEnemy with BlockMovementCollision {
     await super.onLoad();
   }
 
+  double _bobTimer = 0.0;
+
   @override
   void update(double dt) {
     super.update(dt);
-    if (isDead) return;
+    if (isDead) {
+      scale = Vector2.all(1.0);
+      return;
+    }
+
+    final isMoving = velocity.x != 0 || velocity.y != 0;
+    if (isMoving) {
+      _bobTimer += dt * 12;
+      scale = Vector2(1.0, 1.0 + sin(_bobTimer) * 0.06);
+    } else {
+      scale = Vector2.all(1.0);
+    }
 
     seeAndMoveToPlayer(
       closePlayer: (player) {
@@ -81,5 +111,20 @@ class AlienSmallEnemy extends SimpleEnemy with BlockMovementCollision {
         });
       },
     );
+  }
+
+  @override
+  void onDie() {
+    super.onDie();
+    final rand = Random();
+    if (rand.nextDouble() < 0.3) {
+      final type = PickupType.values[rand.nextInt(PickupType.values.length)];
+      gameRef.add(
+        PickupComponent(
+          position: center - Vector2(10, 10),
+          type: type,
+        ),
+      );
+    }
   }
 }

@@ -4,6 +4,11 @@ class HudOverlay extends StatelessWidget {
   final String levelName;
   final double hp;
   final double maxHp;
+  final double shield;
+  final double maxShield;
+  final int ammo;
+  final int maxAmmo;
+  final bool isReloading;
   final int currentWave;
   final int totalWaves;
   final int activeEnemies;
@@ -15,6 +20,11 @@ class HudOverlay extends StatelessWidget {
     required this.levelName,
     required this.hp,
     required this.maxHp,
+    required this.shield,
+    required this.maxShield,
+    required this.ammo,
+    required this.maxAmmo,
+    required this.isReloading,
     required this.currentWave,
     required this.totalWaves,
     required this.activeEnemies,
@@ -34,51 +44,104 @@ class HudOverlay extends StatelessWidget {
             // Top HUD Bar
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Health Bar (glowing tech look)
-                Container(
-                  width: 140,
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF0F121F).withValues(alpha: 0.8),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.white10),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Row(
-                        children: [
-                          Icon(Icons.bolt, color: Color(0xFF00E5FF), size: 12),
-                          SizedBox(width: 4),
-                          Text(
-                            'AGENT HP',
-                            style: TextStyle(
+                // Health & Ammo Controls
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Stack(
+                      alignment: Alignment.centerLeft,
+                      children: [
+                        Image.asset(
+                          'assets/images/hud_and_ui_elements/Health_bar_frame.png',
+                          width: 180,
+                          height: 48,
+                          fit: BoxFit.fill,
+                        ),
+                        Positioned(
+                          left: 20,
+                          top: 10,
+                          width: 144,
+                          height: 8,
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(2),
+                            child: LinearProgressIndicator(
+                              value: healthPercent,
+                              backgroundColor: Colors.white10,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                healthPercent > 0.3
+                                    ? const Color(0xFF00E5FF)
+                                    : Colors.redAccent,
+                              ),
+                            ),
+                          ),
+                        ),
+                        if (shield > 0)
+                          Positioned(
+                            left: 20,
+                            top: 22,
+                            width: 144 * (shield / maxShield).clamp(0.0, 1.0),
+                            height: 4,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: Colors.amber,
+                                borderRadius: BorderRadius.circular(1),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.amber.withValues(alpha: 0.5),
+                                    blurRadius: 4,
+                                  )
+                                ],
+                              ),
+                            ),
+                          ),
+                        Positioned(
+                          left: 22,
+                          top: 28,
+                          child: Text(
+                            shield > 0 
+                                ? 'HP: ${hp.toInt()}  SHIELD: ${shield.toInt()}' 
+                                : 'HP: ${hp.toInt()}',
+                            style: const TextStyle(
                               color: Colors.white70,
-                              fontSize: 9,
+                              fontSize: 8,
                               fontWeight: FontWeight.bold,
-                              letterSpacing: 1,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0F121F).withValues(alpha: 0.8),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: Colors.white10),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Image.asset(
+                            'assets/images/hud_and_ui_elements/Ammo_counter_icon.png',
+                            width: 14,
+                            height: 14,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            isReloading ? 'RELOADING' : 'AMMO: $ammo/$maxAmmo',
+                            style: TextStyle(
+                              color: isReloading ? Colors.redAccent : Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 4),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
-                        child: LinearProgressIndicator(
-                          value: healthPercent,
-                          backgroundColor: Colors.white10,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            healthPercent > 0.3
-                                ? const Color(0xFF00E5FF)
-                                : Colors.redAccent,
-                          ),
-                          minHeight: 8,
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
 
                 // Sector Name / Timer
@@ -117,10 +180,10 @@ class HudOverlay extends StatelessWidget {
 
                 // Pause Button
                 IconButton(
-                  icon: const Icon(
-                    Icons.pause_circle_filled,
-                    color: Colors.white,
-                    size: 28,
+                  icon: Image.asset(
+                    'assets/images/hud_and_ui_elements/Pause_button_icon.png',
+                    width: 32,
+                    height: 32,
                   ),
                   onPressed: onPause,
                 ),

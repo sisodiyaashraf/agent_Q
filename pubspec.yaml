@@ -20,6 +20,20 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.11.0
+
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/app_icon/app_icon.png"
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/app_icon/
+    - assets/images/achievements_and_progression/
+    - assets/images/background_images/
+    - assets/images/characters/
+    - assets/images/hud_and_ui_elements/
+    - assets/images/pickups_and_powerups/
+

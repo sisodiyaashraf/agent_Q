@@ -51,9 +51,9 @@ class RoomDefinition {
     final world = WorldConfig.getWorldForLevel(level);
     final isBoss = WorldConfig.isBossLevel(level);
 
-    // Grid sizes: Boss rooms are slightly larger for boss maneuvering
-    final int width = isBoss ? 24 : 20;
-    final int height = isBoss ? 16 : 12;
+    // Grid sizes: set larger grids to fully occupy modern landscape displays
+    final int width = isBoss ? 36 : 30;
+    final int height = isBoss ? 22 : 18;
     const double tileSize = 32.0;
 
     final List<Tile> tiles = [];

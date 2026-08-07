@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:bonfire/bonfire.dart';
+import '../items/pickup_component.dart';
 
 class AlienBossEnemy extends SimpleEnemy with BlockMovementCollision {
   final double damage;
@@ -17,21 +18,19 @@ class AlienBossEnemy extends SimpleEnemy with BlockMovementCollision {
           speed: speed * 0.5, // Slow boss movement
           animation: SimpleDirectionAnimation(
             idleRight: SpriteAnimation.fromFrameData(
-              Flame.images.fromCache('enemy_alien_boss.png'),
+              Flame.images.fromCache('characters/Boss_alien_enemy.png'),
               SpriteAnimationData.sequenced(
-                amount: 4,
-                stepTime: 0.25,
-                textureSize: Vector2(64, 64),
-                texturePosition: Vector2(0, 0),
+                amount: 1,
+                stepTime: 1.0,
+                textureSize: Vector2(677, 369),
               ),
             ),
             runRight: SpriteAnimation.fromFrameData(
-              Flame.images.fromCache('enemy_alien_boss.png'),
+              Flame.images.fromCache('characters/Boss_alien_enemy.png'),
               SpriteAnimationData.sequenced(
-                amount: 4,
-                stepTime: 0.2,
-                textureSize: Vector2(64, 64),
-                texturePosition: Vector2(0, 64),
+                amount: 1,
+                stepTime: 1.0,
+                textureSize: Vector2(677, 369),
               ),
             ),
           ),
@@ -48,10 +47,23 @@ class AlienBossEnemy extends SimpleEnemy with BlockMovementCollision {
     await super.onLoad();
   }
 
+  double _bobTimer = 0.0;
+
   @override
   void update(double dt) {
     super.update(dt);
-    if (isDead) return;
+    if (isDead) {
+      scale = Vector2.all(1.0);
+      return;
+    }
+
+    final isMoving = velocity.x != 0 || velocity.y != 0;
+    if (isMoving) {
+      _bobTimer += dt * 8; // Boss is slower, slower bob
+      scale = Vector2(1.0, 1.0 + sin(_bobTimer) * 0.05);
+    } else {
+      scale = Vector2.all(1.0);
+    }
 
     _actionTimer -= dt;
     if (_actionTimer <= 0) {
@@ -119,5 +131,20 @@ class AlienBossEnemy extends SimpleEnemy with BlockMovementCollision {
     Future.delayed(const Duration(milliseconds: 1000), () {
       _isPerformingAttack = false;
     });
+  }
+
+  @override
+  void onDie() {
+    super.onDie();
+    final rand = Random();
+    if (rand.nextDouble() < 0.3) {
+      final type = PickupType.values[rand.nextInt(PickupType.values.length)];
+      gameRef.add(
+        PickupComponent(
+          position: center - Vector2(10, 10),
+          type: type,
+        ),
+      );
+    }
   }
 }

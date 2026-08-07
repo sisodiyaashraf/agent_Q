@@ -8,11 +8,17 @@ class GameSplashScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF060814),
-      body: FlameSplashScreen(
-        theme: FlameSplashTheme.dark,
-        showBefore: (context) {
-          return Center(
+      body: Container(
+        decoration: const BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage('assets/images/background_images/Splashscreenar.jpeg'),
+            fit: BoxFit.cover,
+          ),
+        ),
+        child: FlameSplashScreen(
+          theme: FlameSplashTheme.dark,
+          showBefore: (context) {
+            return Center(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -52,6 +58,7 @@ class GameSplashScreen extends StatelessWidget {
           );
         },
       ),
+    ),
     );
   }
 }
