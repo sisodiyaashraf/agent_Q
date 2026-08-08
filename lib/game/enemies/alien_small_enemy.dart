@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:bonfire/bonfire.dart';
 import '../../core/constants/world_config.dart';
 import '../items/pickup_component.dart';
+import 'enemy_health_bar.dart';
 
 class AlienSmallEnemy extends SimpleEnemy with BlockMovementCollision {
   final double damage;
@@ -48,11 +49,11 @@ class AlienSmallEnemy extends SimpleEnemy with BlockMovementCollision {
 
     animation = SimpleDirectionAnimation(
       idleRight: alienSheet.createAnimation(row: 1, stepTime: 0.15, from: 2, to: 4),
-      runRight: alienSheet.createAnimation(row: 1, stepTime: 0.15, from: 2, to: 4),
+      runRight: alienSheet.createAnimation(row: 1, stepTime: 0.08, from: 2, to: 4),
       idleUp: alienSheet.createAnimation(row: 0, stepTime: 0.15, from: 4, to: 6),
-      runUp: alienSheet.createAnimation(row: 0, stepTime: 0.15, from: 4, to: 6),
+      runUp: alienSheet.createAnimation(row: 0, stepTime: 0.08, from: 4, to: 6),
       idleDown: alienSheet.createAnimation(row: 1, stepTime: 0.15, from: 0, to: 2),
-      runDown: alienSheet.createAnimation(row: 1, stepTime: 0.15, from: 0, to: 2),
+      runDown: alienSheet.createAnimation(row: 1, stepTime: 0.08, from: 0, to: 2),
     );
 
     add(
@@ -61,6 +62,7 @@ class AlienSmallEnemy extends SimpleEnemy with BlockMovementCollision {
         position: Vector2(18, 20),
       ),
     );
+    add(EnemyHealthBar());
     await super.onLoad();
   }
 

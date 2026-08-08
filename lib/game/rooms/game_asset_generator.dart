@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import '../../core/constants/world_config.dart';
@@ -106,6 +107,53 @@ class GameAssetGenerator {
 
     final picture = recorder.endRecording();
     return await picture.toImage(16, 16);
+  }
+
+  /// Generates a punch impact star animation: 96x32 (3 frames of 32x32)
+  static Future<ui.Image> generateImpactStar() async {
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder, const Rect.fromLTWH(0, 0, 96, 32));
+
+    // Draw Frame 0: Small yellow star burst
+    _drawStarBurst(canvas, 16, 16, radius: 6, points: 5, color: const Color(0xFFFFEB3B));
+
+    // Draw Frame 1: Large orange-yellow star burst with sparkles
+    _drawStarBurst(canvas, 48, 16, radius: 12, points: 8, color: const Color(0xFFFFC107));
+    _drawSparkle(canvas, 48 - 8, 16 - 8, const Color(0xFFFF5722));
+    _drawSparkle(canvas, 48 + 8, 16 + 8, const Color(0xFFFF5722));
+
+    // Draw Frame 2: Fading small orange star burst
+    _drawStarBurst(canvas, 80, 16, radius: 8, points: 6, color: const Color(0xFFFF5722));
+
+    final picture = recorder.endRecording();
+    return await picture.toImage(96, 32);
+  }
+
+  static void _drawStarBurst(Canvas canvas, double cx, double cy, {required double radius, required int points, required Color color}) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+    final path = Path();
+    final double angle = pi / points;
+    for (int i = 0; i < 2 * points; i++) {
+      final double r = (i % 2 == 0) ? radius : radius / 2;
+      final double x = cx + r * cos(i * angle - pi / 2);
+      final double y = cy + r * sin(i * angle - pi / 2);
+      if (i == 0) {
+        path.moveTo(x, y);
+      } else {
+        path.lineTo(x, y);
+      }
+    }
+    path.close();
+    canvas.drawPath(path, paint);
+  }
+
+  static void _drawSparkle(Canvas canvas, double cx, double cy, Color color) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(Offset(cx, cy), 2, paint);
   }
 
   // DRAW HELPERS FOR PLAYER

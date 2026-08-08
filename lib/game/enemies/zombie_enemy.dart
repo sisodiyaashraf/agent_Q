@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:bonfire/bonfire.dart';
 import '../../core/constants/world_config.dart';
 import '../items/pickup_component.dart';
+import 'enemy_health_bar.dart';
 
 class ZombieEnemy extends SimpleEnemy with BlockMovementCollision {
   final double damage;
@@ -44,6 +45,7 @@ class ZombieEnemy extends SimpleEnemy with BlockMovementCollision {
         position: Vector2(28, 20),
       ),
     );
+    add(EnemyHealthBar());
     await super.onLoad();
   }
 

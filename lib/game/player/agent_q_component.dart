@@ -195,12 +195,28 @@ class AgentQComponent extends SimplePlayer with BlockMovementCollision {
 
     animation?.playOnce(punchAnim, flipX: lastDirection == Direction.left);
 
-    // Spawn close range melee attack
-    simpleAttackMelee(
-      damage: 15.0,
-      size: Vector2(50, 50),
-      withPush: true,
+    final Future<SpriteAnimation> impactStarAnim = Future.value(
+      SpriteAnimation.fromFrameData(
+        Flame.images.fromCache('impact_star.png'),
+        SpriteAnimationData.sequenced(
+          amount: 3,
+          stepTime: 0.08,
+          textureSize: Vector2(32, 32),
+          loop: false,
+        ),
+      ),
     );
+
+    // Delay the melee hit-detection and impact star to align with the strike frame specifically (frame 1)
+    Future.delayed(const Duration(milliseconds: 60), () {
+      if (isDead) return;
+      simpleAttackMelee(
+        damage: 15.0,
+        size: Vector2(50, 50),
+        withPush: true,
+        animationRight: impactStarAnim,
+      );
+    });
   }
 
   void shoot() {
@@ -270,23 +286,27 @@ class AgentQComponent extends SimplePlayer with BlockMovementCollision {
       onAmmoChanged(ammo, maxAmmo, _isReloading);
     }
 
-    simpleAttackRangeByAngle(
-      angle: angle,
-      damage: 20.0,
-      size: Vector2(8, 8),
-      speed: 350.0,
-      attackFrom: AttackOriginEnum.PLAYER_OR_ALLY,
-      animation: Future.value(
-        SpriteAnimation.fromFrameData(
-          Flame.images.fromCache('bullet.png'),
-          SpriteAnimationData.sequenced(
-            amount: 1,
-            stepTime: 1.0,
-            textureSize: Vector2(16, 16),
+    // Delay bullet spawn slightly to visually sync with the shooting muzzle flash frame
+    Future.delayed(const Duration(milliseconds: 150), () {
+      if (isDead) return;
+      simpleAttackRangeByAngle(
+        angle: angle,
+        damage: 20.0,
+        size: Vector2(8, 8),
+        speed: 350.0,
+        attackFrom: AttackOriginEnum.PLAYER_OR_ALLY,
+        animation: Future.value(
+          SpriteAnimation.fromFrameData(
+            Flame.images.fromCache('bullet.png'),
+            SpriteAnimationData.sequenced(
+              amount: 1,
+              stepTime: 1.0,
+              textureSize: Vector2(16, 16),
+            ),
           ),
         ),
-      ),
-    );
+      );
+    });
 
     _fireCooldown = _fireRate;
   }

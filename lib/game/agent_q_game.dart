@@ -89,9 +89,11 @@ class _AgentQGameWidgetState extends State<AgentQGameWidget> {
     final world = _roomDef.world;
     final tilesetImg = await GameAssetGenerator.generateTileset(world);
     final bulletImg = await GameAssetGenerator.generateBullet();
+    final starImg = await GameAssetGenerator.generateImpactStar();
 
     Flame.images.add('tileset.png', tilesetImg);
     Flame.images.add('bullet.png', bulletImg);
+    Flame.images.add('impact_star.png', starImg);
 
     // Load real images from assets/images/
     await Flame.images.load('characters/walk_cycle_agent_Q.png');

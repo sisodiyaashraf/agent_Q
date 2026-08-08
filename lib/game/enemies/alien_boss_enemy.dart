@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:bonfire/bonfire.dart';
 import '../../core/constants/world_config.dart';
 import '../items/pickup_component.dart';
+import 'enemy_health_bar.dart';
 
 class AlienBossEnemy extends SimpleEnemy with BlockMovementCollision {
   final double damage;
@@ -45,6 +46,7 @@ class AlienBossEnemy extends SimpleEnemy with BlockMovementCollision {
         position: Vector2(24, 30),
       ),
     );
+    add(EnemyHealthBar());
     await super.onLoad();
   }
 
