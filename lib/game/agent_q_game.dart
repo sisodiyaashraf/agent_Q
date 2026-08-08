@@ -228,6 +228,10 @@ class _AgentQGameWidgetState extends State<AgentQGameWidget> {
 
     final isZombieWorld = _roomDef.world.id == 1;
     final double screenHeight = MediaQuery.of(context).size.height;
+    // Viewport/Scale Reconciliation Decision:
+    // We selected Option A: Keep internal viewport height at 576px (WorldConfig.gameHeight = 576.0)
+    // and draw characters at standard 96x105px size on-screen. This correctly places the character height
+    // at ~18.2% of the screen height, matching the visual proportion of the reference video exactly.
     final double calculatedZoom = isZombieWorld
         ? (screenHeight > 0 ? screenHeight / WorldConfig.gameHeight : 1.0)
         : 1.5;
@@ -560,10 +564,11 @@ class LoopedFacilityBackground extends GameBackground {
     final int repeats = (mapWidth / scaledWidth).ceil() + 2;
 
     for (int i = 0; i < repeats; i++) {
+      // Use a tiny 1-pixel width overlap to prevent thin flickering seams between tiled repeats
       _sprite!.render(
         canvas,
         position: Vector2(i * scaledWidth, visibleRect.top),
-        size: Vector2(scaledWidth, visibleRect.height),
+        size: Vector2(scaledWidth + 1.0, visibleRect.height),
         overridePaint: _paint,
       );
     }
