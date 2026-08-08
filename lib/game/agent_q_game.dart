@@ -6,6 +6,7 @@ import '../core/constants/world_config.dart';
 import '../services/save_service.dart';
 import '../services/games_services_wrapper.dart';
 import '../ui/hud/hud_overlay.dart';
+import '../ui/controls/game_controls_overlay.dart';
 import 'player/agent_q_component.dart';
 import 'rooms/game_asset_generator.dart';
 import 'rooms/room_definition.dart';
@@ -101,8 +102,15 @@ class _AgentQGameWidgetState extends State<AgentQGameWidget> {
     await Flame.images.load('characters/Boss_alien_enemy.png');
     await Flame.images.load('characters/Masked_elite_enemy.png');
 
-    final bgPath = _getBackgroundPath(_roomDef.world.id);
-    await Flame.images.load(bgPath);
+    final isZombieWorld = _roomDef.world.id == 1;
+    if (isZombieWorld) {
+      await Flame.images.load(
+        'background_images/deep_facility_world/deep_facility_world.png',
+      );
+    } else {
+      final bgPath = _getBackgroundPath(_roomDef.world.id);
+      await Flame.images.load(bgPath);
+    }
 
     _stopwatch.start();
     _timer = async.Timer.periodic(const Duration(seconds: 1), (timer) {
@@ -218,6 +226,12 @@ class _AgentQGameWidgetState extends State<AgentQGameWidget> {
       );
     }
 
+    final isZombieWorld = _roomDef.world.id == 1;
+    final double screenHeight = MediaQuery.of(context).size.height;
+    final double calculatedZoom = isZombieWorld
+        ? (screenHeight > 0 ? screenHeight / WorldConfig.gameHeight : 1.0)
+        : 1.5;
+
     final joystick = Joystick(
       directional: JoystickDirectional(
         spriteBackgroundDirectional: Sprite.load(
@@ -240,13 +254,15 @@ class _AgentQGameWidgetState extends State<AgentQGameWidget> {
         children: [
           BonfireWidget(
             map: _roomDef.map,
-            background: RoomBackground(
-              path: _getBackgroundPath(_roomDef.world.id),
-              mapSize: Vector2(
-                _roomDef.gridWidth * _roomDef.tileSize,
-                _roomDef.gridHeight * _roomDef.tileSize,
-              ),
-            ),
+            background: isZombieWorld
+                ? null
+                : RoomBackground(
+                    path: _getBackgroundPath(_roomDef.world.id),
+                    mapSize: Vector2(
+                      _roomDef.gridWidth * _roomDef.tileSize,
+                      _roomDef.gridHeight * _roomDef.tileSize,
+                    ),
+                  ),
             player: AgentQComponent(
               position: _roomDef.playerSpawn,
               onHealthChanged: _onPlayerHealthChanged,
@@ -255,13 +271,17 @@ class _AgentQGameWidgetState extends State<AgentQGameWidget> {
             ),
             playerControllers: [joystick, Keyboard()],
             components: [
+              if (isZombieWorld) LoopedFacilityBackground(),
               WaveManagerComponent(
                 room: _roomDef,
                 onAllWavesCleared: _winLevel,
                 onWaveStatusChanged: _onWaveStatusChanged,
               ),
             ],
-            cameraConfig: CameraConfig(moveOnlyMapArea: true, zoom: 1.5),
+            cameraConfig: CameraConfig(
+              moveOnlyMapArea: true,
+              zoom: calculatedZoom,
+            ),
             overlayBuilderMap: {
               'hud': (context, game) => HudOverlay(
                 levelName: 'STAGE ${widget.levelId}',
@@ -285,8 +305,9 @@ class _AgentQGameWidgetState extends State<AgentQGameWidget> {
                   );
                 },
               ),
+              'controls': (context, game) => GameControlsOverlay(game: game),
             },
-            initialActiveOverlays: const ['hud'],
+            initialActiveOverlays: const ['hud', 'controls'],
           ),
           if (_levelWon) ...[
             IgnorePointer(
@@ -509,6 +530,41 @@ class RoomBackground extends GameBackground {
   void render(Canvas canvas) {
     if (_sprite != null) {
       _sprite!.render(canvas, position: Vector2.zero(), size: mapSize);
+    }
+  }
+}
+
+class LoopedFacilityBackground extends GameBackground {
+  Sprite? _sprite;
+  double _scaledWidth = 0.0;
+  static const double _h = WorldConfig.gameHeight;
+  final Paint _paint = Paint()
+    ..filterQuality = FilterQuality.high
+    ..isAntiAlias = true;
+
+  LoopedFacilityBackground() : super();
+
+  @override
+  Future<void> onLoad() async {
+    _sprite = await Sprite.load(
+      'background_images/deep_facility_world/deep_facility_world.png',
+    );
+    // Aspect ratio: 2097 width / 750 height
+    _scaledWidth = 2097 * (_h / 750);
+    size = Vector2(_scaledWidth * 4, _h);
+    await super.onLoad();
+  }
+
+  @override
+  void render(Canvas canvas) {
+    if (_sprite == null) return;
+    for (int i = 0; i < 4; i++) {
+      _sprite!.render(
+        canvas,
+        position: Vector2(i * _scaledWidth, 0),
+        size: Vector2(_scaledWidth, _h),
+        overridePaint: _paint,
+      );
     }
   }
 }

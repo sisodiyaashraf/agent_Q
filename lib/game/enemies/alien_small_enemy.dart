@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:bonfire/bonfire.dart';
+import '../../core/constants/world_config.dart';
 import '../items/pickup_component.dart';
 
 class AlienSmallEnemy extends SimpleEnemy with BlockMovementCollision {
@@ -12,7 +13,7 @@ class AlienSmallEnemy extends SimpleEnemy with BlockMovementCollision {
     required double speed,
     required this.damage,
   }) : super(
-          size: Vector2(24, 24), // Smaller size
+          size: Vector2(72, 79), // Scaled size
           life: health * 0.5, // Low health
           speed: speed * 1.4, // Very fast
           animation: SimpleDirectionAnimation(
@@ -56,8 +57,8 @@ class AlienSmallEnemy extends SimpleEnemy with BlockMovementCollision {
 
     add(
       RectangleHitbox(
-        size: Vector2(16, 16),
-        position: Vector2(4, 4),
+        size: Vector2(36, 36),
+        position: Vector2(18, 20),
       ),
     );
     await super.onLoad();
@@ -72,6 +73,9 @@ class AlienSmallEnemy extends SimpleEnemy with BlockMovementCollision {
       scale = Vector2.all(1.0);
       return;
     }
+
+    // Constrain enemy Y position to floor
+    position.y = WorldConfig.floorY - size.y;
 
     final isMoving = velocity.x != 0 || velocity.y != 0;
     if (isMoving) {

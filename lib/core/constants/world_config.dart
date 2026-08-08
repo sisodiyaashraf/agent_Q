@@ -29,6 +29,9 @@ class WorldDefinition {
 class WorldConfig {
   static const int totalLevels = 50;
   static const int levelsPerWorld = 10;
+  static const double gameHeight = 576.0;
+  static const double floorY = 480.0;
+  static const double gravity = 900.0;
 
   static const List<WorldDefinition> worlds = [
     WorldDefinition(

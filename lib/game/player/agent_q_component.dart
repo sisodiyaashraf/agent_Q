@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:bonfire/bonfire.dart';
 import 'package:flutter/material.dart';
+import '../../core/constants/world_config.dart';
 
 class AgentQComponent extends SimplePlayer with BlockMovementCollision {
   static const double maxHealth = 100.0;
@@ -21,7 +22,10 @@ class AgentQComponent extends SimplePlayer with BlockMovementCollision {
 
   double _fireCooldown = 0.0;
   final double _fireRate = 0.35; // Seconds between shots
-  final double _aimRange = 180.0; // Distance to target
+
+  bool _isJumping = false;
+  bool get isJumping => _isJumping;
+  double _velocityY = 0.0;
 
   AgentQComponent({
     required super.position,
@@ -29,7 +33,7 @@ class AgentQComponent extends SimplePlayer with BlockMovementCollision {
     required this.onAmmoChanged,
     required this.onDeath,
   }) : super(
-          size: Vector2(32, 32),
+          size: Vector2(96, 105),
           life: maxHealth,
           speed: 130.0,
           animation: SimpleDirectionAnimation(
@@ -53,6 +57,25 @@ class AgentQComponent extends SimplePlayer with BlockMovementCollision {
             ),
           ),
         );
+
+  @override
+  void onJoystickChangeDirectional(JoystickDirectionalEvent event) {
+    if (isDead) return;
+
+    double targetAngle = event.radAngle;
+    if (event.directional != JoystickMoveDirectional.IDLE) {
+      final isMovingRight = cos(event.radAngle) > 0;
+      targetAngle = isMovingRight ? 0.0 : pi;
+    }
+
+    final horizontalEvent = JoystickDirectionalEvent(
+      directional: event.directional,
+      intensity: event.intensity,
+      radAngle: targetAngle,
+      isKeyboard: event.isKeyboard,
+    );
+    super.onJoystickChangeDirectional(horizontalEvent);
+  }
 
   @override
   Future<void> onLoad() async {
@@ -88,11 +111,10 @@ class AgentQComponent extends SimplePlayer with BlockMovementCollision {
       ], stepTimes: List.filled(5, 0.12)),
     );
 
-    // Add hitbox slightly smaller than sprite for fairer collisions
     add(
       RectangleHitbox(
-        size: Vector2(20, 24),
-        position: Vector2(6, 4),
+        size: Vector2(40, 85),
+        position: Vector2(28, 20),
       ),
     );
     await super.onLoad();
@@ -112,108 +134,161 @@ class AgentQComponent extends SimplePlayer with BlockMovementCollision {
       }
     }
 
-    _fireCooldown -= dt;
-    if (_fireCooldown <= 0 && !_isReloading) {
-      _autoAimAndShoot();
+    if (_fireCooldown > 0) {
+      _fireCooldown -= dt;
+    }
+
+    // Apply gravity and jumping calculations
+    if (_isJumping) {
+      _velocityY += WorldConfig.gravity * dt;
+      position.y += _velocityY * dt;
+      if (position.y >= WorldConfig.floorY - size.y) {
+        position.y = WorldConfig.floorY - size.y;
+        _velocityY = 0.0;
+        _isJumping = false;
+      }
+    } else {
+      // Force Y constraint
+      position.y = WorldConfig.floorY - size.y;
+    }
+
+    // Keep player within horizontal map boundaries
+    final mapWidth = gameRef.map.size.x;
+    if (position.x < 0) {
+      position.x = 0;
+    } else if (position.x > mapWidth - size.x) {
+      position.x = mapWidth - size.x;
     }
   }
 
-  void _autoAimAndShoot() {
-    if (gameRef.enemies().isEmpty) return;
+  void jump() {
+    if (isDead || _isJumping) return;
+    _isJumping = true;
+    _velocityY = -350.0; // Jump force
 
-    // Filter alive enemies and find the nearest one within range
-    final playerCenter = center;
-    Enemy? closestEnemy;
-    double minDistance = _aimRange;
+    // Play jump animation (upward facing stand frame)
+    final walkImage = Flame.images.fromCache('characters/walk_cycle_agent_Q.png');
+    final walkSheet = SpriteSheet(
+      image: walkImage,
+      srcSize: Vector2(677 / 6, 369 / 3),
+    );
+    final jumpAnim = SpriteAnimation.variableSpriteList([
+      walkSheet.getSprite(0, 5),
+    ], stepTimes: [1.0]);
+    animation?.playOnce(jumpAnim, flipX: lastDirection == Direction.left);
+  }
 
-    for (final enemy in gameRef.enemies()) {
-      if (enemy.isDead) continue;
-      final enemyCenter = enemy.center;
-      final dist = (enemyCenter - playerCenter).length;
-      if (dist < minDistance) {
-        minDistance = dist;
-        closestEnemy = enemy;
-      }
+  void punch() {
+    if (isDead || _isJumping) return;
+
+    // Play punch swing animation using row 2 columns 0-2
+    final walkImage = Flame.images.fromCache('characters/walk_cycle_agent_Q.png');
+    final walkSheet = SpriteSheet(
+      image: walkImage,
+      srcSize: Vector2(677 / 6, 369 / 3),
+    );
+    final punchAnim = SpriteAnimation.variableSpriteList([
+      walkSheet.getSprite(2, 0),
+      walkSheet.getSprite(2, 1),
+      walkSheet.getSprite(2, 2),
+    ], stepTimes: [0.06, 0.06, 0.06]);
+
+    animation?.playOnce(punchAnim, flipX: lastDirection == Direction.left);
+
+    // Spawn close range melee attack
+    simpleAttackMelee(
+      damage: 15.0,
+      size: Vector2(50, 50),
+      withPush: true,
+    );
+  }
+
+  void shoot() {
+    if (isDead || _isReloading || _fireCooldown > 0) return;
+
+    if (ammo <= 0) {
+      _isReloading = true;
+      _reloadTimer = _reloadTime;
+      onAmmoChanged(ammo, maxAmmo, _isReloading);
+      return;
     }
 
-    if (closestEnemy != null) {
-      final enemyCenter = closestEnemy.center;
-      final angle = atan2(enemyCenter.y - playerCenter.y, enemyCenter.x - playerCenter.x);
+    double angle = 0.0;
+    bool isLeft = false;
+    if (lastDirection == Direction.left) {
+      angle = pi;
+      isLeft = true;
+    } else if (lastDirection == Direction.right) {
+      angle = 0.0;
+      isLeft = false;
+    } else if (lastDirection == Direction.up) {
+      angle = -pi / 2;
+    } else if (lastDirection == Direction.down) {
+      angle = pi / 2;
+    }
 
-      // Consume ammo
-      ammo--;
+    final shootImage = Flame.images.fromCache('characters/Shooting_animation_aq.png');
+    final shootSheet = SpriteSheet(
+      image: shootImage,
+      srcSize: Vector2(677 / 6, 369 / 3),
+    );
+
+    SpriteAnimation shootAnim;
+    if (lastDirection == Direction.up) {
+      shootAnim = SpriteAnimation.variableSpriteList([
+        shootSheet.getSprite(0, 5),
+        shootSheet.getSprite(1, 0),
+        shootSheet.getSprite(1, 1),
+        shootSheet.getSprite(1, 2),
+        shootSheet.getSprite(1, 3),
+      ], stepTimes: List.filled(5, 0.05));
+    } else if (lastDirection == Direction.down) {
+      shootAnim = SpriteAnimation.variableSpriteList([
+        shootSheet.getSprite(0, 1),
+        shootSheet.getSprite(0, 2),
+        shootSheet.getSprite(0, 3),
+      ], stepTimes: List.filled(3, 0.08));
+    } else {
+      shootAnim = SpriteAnimation.variableSpriteList([
+        shootSheet.getSprite(2, 0),
+        shootSheet.getSprite(2, 1),
+        shootSheet.getSprite(2, 2),
+        shootSheet.getSprite(2, 3),
+        shootSheet.getSprite(2, 4),
+        shootSheet.getSprite(2, 5),
+      ], stepTimes: List.filled(6, 0.05));
+    }
+
+    animation?.playOnce(shootAnim, flipX: isLeft);
+
+    ammo--;
+    onAmmoChanged(ammo, maxAmmo, _isReloading);
+
+    if (ammo <= 0) {
+      _isReloading = true;
+      _reloadTimer = _reloadTime;
       onAmmoChanged(ammo, maxAmmo, _isReloading);
+    }
 
-      if (ammo <= 0) {
-        _isReloading = true;
-        _reloadTimer = _reloadTime;
-        onAmmoChanged(ammo, maxAmmo, _isReloading);
-      }
-
-      // Play shooting animation based on target angle/direction
-      final shootImage = Flame.images.fromCache('characters/Shooting_animation_aq.png');
-      final shootSheet = SpriteSheet(
-        image: shootImage,
-        srcSize: Vector2(677 / 6, 369 / 3),
-      );
-
-      final dx = enemyCenter.x - playerCenter.x;
-      final dy = enemyCenter.y - playerCenter.y;
-      SpriteAnimation shootAnim;
-      bool flipH = false;
-
-      if (dx.abs() > dy.abs()) {
-        flipH = dx < 0;
-        shootAnim = SpriteAnimation.variableSpriteList([
-          shootSheet.getSprite(2, 0),
-          shootSheet.getSprite(2, 1),
-          shootSheet.getSprite(2, 2),
-          shootSheet.getSprite(2, 3),
-          shootSheet.getSprite(2, 4),
-          shootSheet.getSprite(2, 5),
-        ], stepTimes: List.filled(6, 0.05));
-      } else {
-        if (dy < 0) {
-          shootAnim = SpriteAnimation.variableSpriteList([
-            shootSheet.getSprite(0, 5),
-            shootSheet.getSprite(1, 0),
-            shootSheet.getSprite(1, 1),
-            shootSheet.getSprite(1, 2),
-            shootSheet.getSprite(1, 3),
-          ], stepTimes: List.filled(5, 0.05));
-        } else {
-          shootAnim = SpriteAnimation.variableSpriteList([
-            shootSheet.getSprite(0, 1),
-            shootSheet.getSprite(0, 2),
-            shootSheet.getSprite(0, 3),
-          ], stepTimes: List.filled(3, 0.08));
-        }
-      }
-
-      animation?.playOnce(shootAnim, flipX: flipH);
-
-      // Fire projectile
-      simpleAttackRangeByAngle(
-        angle: angle,
-        damage: 20.0,
-        size: Vector2(8, 8),
-        speed: 260.0,
-        attackFrom: AttackOriginEnum.PLAYER_OR_ALLY,
-        animation: Future.value(
-          SpriteAnimation.fromFrameData(
-            Flame.images.fromCache('bullet.png'),
-            SpriteAnimationData.sequenced(
-              amount: 1,
-              stepTime: 1.0,
-              textureSize: Vector2(16, 16),
-            ),
+    simpleAttackRangeByAngle(
+      angle: angle,
+      damage: 20.0,
+      size: Vector2(8, 8),
+      speed: 350.0,
+      attackFrom: AttackOriginEnum.PLAYER_OR_ALLY,
+      animation: Future.value(
+        SpriteAnimation.fromFrameData(
+          Flame.images.fromCache('bullet.png'),
+          SpriteAnimationData.sequenced(
+            amount: 1,
+            stepTime: 1.0,
+            textureSize: Vector2(16, 16),
           ),
         ),
-      );
+      ),
+    );
 
-      // Reset cooldown
-      _fireCooldown = _fireRate;
-    }
+    _fireCooldown = _fireRate;
   }
 
   void refillAmmo() {
@@ -241,6 +316,21 @@ class AgentQComponent extends SimplePlayer with BlockMovementCollision {
         shield = 0.0;
       }
     }
+
+    // Add brief red tint effect
+    final colorEffect = ColorEffect(
+      const Color(0xFFFF0000),
+      EffectController(duration: 0.15, reverseDuration: 0.15),
+    );
+    add(colorEffect);
+
+    // Briefly squish character height to simulate hit impact force
+    add(
+      ScaleEffect.to(
+        Vector2(1.1, 0.9),
+        EffectController(duration: 0.08, reverseDuration: 0.08),
+      ),
+    );
 
     super.onReceiveDamage(attacker, damage, identify);
     onHealthChanged(life, maxHealth, shield, maxShield);

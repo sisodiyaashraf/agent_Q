@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:bonfire/bonfire.dart';
+import '../../core/constants/world_config.dart';
 import '../items/pickup_component.dart';
 
 class SoldierEnemy extends SimpleEnemy with BlockMovementCollision {
@@ -12,7 +13,7 @@ class SoldierEnemy extends SimpleEnemy with BlockMovementCollision {
     required double speed,
     required this.damage,
   }) : super(
-          size: Vector2(32, 32),
+          size: Vector2(96, 105),
           life: health,
           speed: speed * 0.8, // Soldiers move at decent speed
           animation: SimpleDirectionAnimation(
@@ -58,8 +59,8 @@ class SoldierEnemy extends SimpleEnemy with BlockMovementCollision {
 
     add(
       RectangleHitbox(
-        size: Vector2(20, 24),
-        position: Vector2(6, 4),
+        size: Vector2(40, 85),
+        position: Vector2(28, 20),
       ),
     );
     await super.onLoad();
@@ -74,6 +75,9 @@ class SoldierEnemy extends SimpleEnemy with BlockMovementCollision {
       scale = Vector2.all(1.0);
       return;
     }
+
+    // Constrain enemy Y position to floor
+    position.y = WorldConfig.floorY - size.y;
 
     final isMoving = velocity.x != 0 || velocity.y != 0;
     if (isMoving) {

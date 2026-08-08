@@ -50,17 +50,20 @@ class RoomDefinition {
   static RoomDefinition generate(int level) {
     final world = WorldConfig.getWorldForLevel(level);
     final isBoss = WorldConfig.isBossLevel(level);
+    final isZombieWorld = world.id == 1;
 
     // Grid sizes: set larger grids to fully occupy modern landscape displays
-    final int width = isBoss ? 36 : 30;
+    final int width = isZombieWorld ? 201 : (isBoss ? 36 : 30);
     final int height = isBoss ? 22 : 18;
     const double tileSize = 32.0;
 
     final List<Tile> tiles = [];
     final List<Vector2> corners = [];
 
-    // Player spawn: Center of the room
-    final playerSpawn = Vector2((width / 2) * tileSize, (height / 2) * tileSize);
+    // Player spawn: Left side for zombie world, center for others
+    final playerSpawn = isZombieWorld
+        ? Vector2(100.0, WorldConfig.floorY - 105.0)
+        : Vector2((width / 2) * tileSize, (height / 2) * tileSize);
 
     for (int row = 0; row < height; row++) {
       for (int col = 0; col < width; col++) {
@@ -105,10 +108,16 @@ class RoomDefinition {
             ),
           );
 
-          // Save valid spawn points around the outer interior edges
-          final isEdgeInterior = (row == 2 || row == height - 3 || col == 2 || col == width - 3);
-          if (isEdgeInterior) {
-            corners.add(Vector2(screenX, screenY));
+          // Save valid spawn points
+          if (isZombieWorld) {
+            if (row == 14 && col >= 10 && col <= width - 6 && col % 5 == 0) {
+              corners.add(Vector2(screenX, WorldConfig.floorY - 105.0));
+            }
+          } else {
+            final isEdgeInterior = (row == 2 || row == height - 3 || col == 2 || col == width - 3);
+            if (isEdgeInterior) {
+              corners.add(Vector2(screenX, screenY));
+            }
           }
         }
       }
