@@ -536,8 +536,6 @@ class RoomBackground extends GameBackground {
 
 class LoopedFacilityBackground extends GameBackground {
   Sprite? _sprite;
-  double _scaledWidth = 0.0;
-  static const double _h = WorldConfig.gameHeight;
   final Paint _paint = Paint()
     ..filterQuality = FilterQuality.high
     ..isAntiAlias = true;
@@ -549,20 +547,23 @@ class LoopedFacilityBackground extends GameBackground {
     _sprite = await Sprite.load(
       'background_images/deep_facility_world/deep_facility_world.png',
     );
-    // Aspect ratio: 2097 width / 750 height
-    _scaledWidth = 2097 * (_h / 750);
-    size = Vector2(_scaledWidth * 4, _h);
     await super.onLoad();
   }
 
   @override
   void render(Canvas canvas) {
     if (_sprite == null) return;
-    for (int i = 0; i < 4; i++) {
+
+    final visibleRect = gameRef.camera.visibleWorldRect;
+    final double scaledWidth = visibleRect.height * (2097 / 750);
+    final double mapWidth = gameRef.map.size.x;
+    final int repeats = (mapWidth / scaledWidth).ceil() + 2;
+
+    for (int i = 0; i < repeats; i++) {
       _sprite!.render(
         canvas,
-        position: Vector2(i * _scaledWidth, 0),
-        size: Vector2(_scaledWidth, _h),
+        position: Vector2(i * scaledWidth, visibleRect.top),
+        size: Vector2(scaledWidth, visibleRect.height),
         overridePaint: _paint,
       );
     }

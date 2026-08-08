@@ -53,8 +53,8 @@ class RoomDefinition {
     final isZombieWorld = world.id == 1;
 
     // Grid sizes: set larger grids to fully occupy modern landscape displays
-    final int width = isZombieWorld ? 201 : (isBoss ? 36 : 30);
-    final int height = isBoss ? 22 : 18;
+    final int width = isZombieWorld ? 269 : (isBoss ? 36 : 30);
+    final int height = isZombieWorld ? 24 : (isBoss ? 22 : 18);
     const double tileSize = 32.0;
 
     final List<Tile> tiles = [];
@@ -110,7 +110,7 @@ class RoomDefinition {
 
           // Save valid spawn points
           if (isZombieWorld) {
-            if (row == 14 && col >= 10 && col <= width - 6 && col % 5 == 0) {
+            if (row == 20 && col >= 10 && col <= width - 6 && col % 5 == 0) {
               corners.add(Vector2(screenX, WorldConfig.floorY - 105.0));
             }
           } else {
