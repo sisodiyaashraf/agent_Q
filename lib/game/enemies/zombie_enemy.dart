@@ -174,7 +174,7 @@ class ZombieEnemy extends SimpleEnemy with BlockMovementCollision, GameFeelMixin
 
   @override
   void onDie() {
-    SoundService.play('death.wav');
+    playDeathAnimationAndRemove('characters/Zombie_enemy.png');
     super.onDie();
     final rand = Random();
     if (rand.nextDouble() < 0.3) {

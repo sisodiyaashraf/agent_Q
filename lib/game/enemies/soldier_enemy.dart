@@ -170,7 +170,7 @@ class SoldierEnemy extends SimpleEnemy with BlockMovementCollision, GameFeelMixi
 
   @override
   void onDie() {
-    SoundService.play('death.wav');
+    playDeathAnimationAndRemove('characters/soldier_enemy.png');
     super.onDie();
     final rand = Random();
     if (rand.nextDouble() < 0.3) {

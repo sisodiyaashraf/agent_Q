@@ -1,6 +1,8 @@
 import 'dart:math';
 import 'package:bonfire/bonfire.dart';
+import 'package:bonfire/mixins/direction_animation.dart';
 import 'package:flutter/material.dart';
+import '../../services/sound_service.dart';
 
 class GameFeel {
   static double hitStopTimer = 0.0;
@@ -25,7 +27,7 @@ class GameFeel {
   }
 }
 
-mixin GameFeelMixin on GameComponent {
+mixin GameFeelMixin on Movement, DirectionAnimation {
   double knockbackX = 0.0;
 
   void applyKnockback(double amount, bool fromLeft) {
@@ -57,6 +59,40 @@ mixin GameFeelMixin on GameComponent {
         text: text,
         color: textColor,
       ),
+    );
+  }
+
+  void playDeathAnimationAndRemove(String spritePath) {
+    if (!hasGameRef) return;
+
+    SoundService.play('death.wav');
+
+    // Fade-out effect during the death animation sequence
+    add(
+      OpacityEffect.to(
+        0.0,
+        EffectController(duration: 0.36),
+      ),
+    );
+
+    final image = Flame.images.fromCache(spritePath);
+    final sheet = SpriteSheet(
+      image: image,
+      srcSize: Vector2(677 / 6, 369 / 3),
+    );
+
+    final dieAnim = SpriteAnimation.variableSpriteList([
+      sheet.getSprite(2, 0),
+      sheet.getSprite(2, 1),
+      sheet.getSprite(2, 2),
+    ], stepTimes: [0.12, 0.12, 0.12]);
+
+    animation?.playOnce(
+      dieAnim,
+      flipX: lastDirection == Direction.left,
+      onFinish: () {
+        removeFromParent();
+      },
     );
   }
 }

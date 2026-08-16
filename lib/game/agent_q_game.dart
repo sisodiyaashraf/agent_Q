@@ -110,7 +110,10 @@ class _AgentQGameWidgetState extends State<AgentQGameWidget> {
     final isZombieWorld = _roomDef.world.id == 1;
     if (isZombieWorld) {
       await Flame.images.load(
-        'background_images/deep_facility_world/deep_facility_world.png',
+        'background_images/World 1 — Urban Outskirts (Soldier)/World 1  Urban Outskirts img 1.jpg',
+      );
+      await Flame.images.load(
+        'background_images/World 1 — Urban Outskirts (Soldier)/World 1  Urban Outskirts img 2.jpg',
       );
     } else {
       final bgPath = _getBackgroundPath(_roomDef.world.id);
@@ -547,7 +550,8 @@ class RoomBackground extends GameBackground {
 }
 
 class LoopedFacilityBackground extends GameBackground {
-  Sprite? _sprite;
+  Sprite? _sprite1;
+  Sprite? _sprite2;
   final Paint _paint = Paint()
     ..filterQuality = FilterQuality.high
     ..isAntiAlias = true;
@@ -556,29 +560,40 @@ class LoopedFacilityBackground extends GameBackground {
 
   @override
   Future<void> onLoad() async {
-    _sprite = await Sprite.load(
-      'background_images/deep_facility_world/deep_facility_world.png',
+    _sprite1 = await Sprite.load(
+      'background_images/World 1 — Urban Outskirts (Soldier)/World 1  Urban Outskirts img 1.jpg',
+    );
+    _sprite2 = await Sprite.load(
+      'background_images/World 1 — Urban Outskirts (Soldier)/World 1  Urban Outskirts img 2.jpg',
     );
     await super.onLoad();
   }
 
   @override
   void render(Canvas canvas) {
-    if (_sprite == null) return;
+    if (_sprite1 == null || _sprite2 == null) return;
 
     final visibleRect = gameRef.camera.visibleWorldRect;
-    final double scaledWidth = visibleRect.height * (2097 / 750);
-    final double mapWidth = gameRef.map.size.x;
-    final int repeats = (mapWidth / scaledWidth).ceil() + 2;
+    final double ar1 = _sprite1!.srcSize.x / _sprite1!.srcSize.y;
+    final double ar2 = _sprite2!.srcSize.x / _sprite2!.srcSize.y;
 
-    for (int i = 0; i < repeats; i++) {
-      // Use a tiny 1-pixel width overlap to prevent thin flickering seams between tiled repeats
-      _sprite!.render(
+    final double scaledWidth1 = visibleRect.height * ar1;
+    final double scaledWidth2 = visibleRect.height * ar2;
+
+    double currentX = 0.0;
+    int i = 0;
+    while (currentX < gameRef.map.size.x + visibleRect.width) {
+      final double width = (i % 2 == 0) ? scaledWidth1 : scaledWidth2;
+      final Sprite sprite = (i % 2 == 0) ? _sprite1! : _sprite2!;
+
+      sprite.render(
         canvas,
-        position: Vector2(i * scaledWidth, visibleRect.top),
-        size: Vector2(scaledWidth + 1.0, visibleRect.height),
+        position: Vector2(currentX, visibleRect.top),
+        size: Vector2(width + 1.0, visibleRect.height),
         overridePaint: _paint,
       );
+      currentX += width;
+      i++;
     }
   }
 }

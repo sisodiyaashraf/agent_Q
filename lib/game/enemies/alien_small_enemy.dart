@@ -173,7 +173,7 @@ class AlienSmallEnemy extends SimpleEnemy with BlockMovementCollision, GameFeelM
 
   @override
   void onDie() {
-    SoundService.play('death.wav');
+    playDeathAnimationAndRemove('characters/Small_alien_enemy.png');
     super.onDie();
     final rand = Random();
     if (rand.nextDouble() < 0.3) {

@@ -61,10 +61,10 @@ class HudOverlay extends StatelessWidget {
                           fit: BoxFit.fill,
                         ),
                         Positioned(
-                          left: 20,
-                          top: 10,
-                          width: 144,
-                          height: 8,
+                          left: 24,
+                          top: 14,
+                          width: 132,
+                          height: 6,
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(2),
                             child: LinearProgressIndicator(
@@ -80,9 +80,9 @@ class HudOverlay extends StatelessWidget {
                         ),
                         if (shield > 0)
                           Positioned(
-                            left: 20,
-                            top: 22,
-                            width: 144 * (shield / maxShield).clamp(0.0, 1.0),
+                            left: 24,
+                            top: 23,
+                            width: 132 * (shield / maxShield).clamp(0.0, 1.0),
                             height: 4,
                             child: Container(
                               decoration: BoxDecoration(
@@ -98,8 +98,8 @@ class HudOverlay extends StatelessWidget {
                             ),
                           ),
                         Positioned(
-                          left: 22,
-                          top: 28,
+                          left: 26,
+                          top: 30,
                           child: Text(
                             shield > 0 
                                 ? 'HP: ${hp.toInt()}  SHIELD: ${shield.toInt()}' 

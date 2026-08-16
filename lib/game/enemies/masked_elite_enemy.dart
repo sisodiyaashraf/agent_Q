@@ -174,7 +174,7 @@ class MaskedEliteEnemy extends SimpleEnemy with BlockMovementCollision, GameFeel
 
   @override
   void onDie() {
-    SoundService.play('death.wav');
+    playDeathAnimationAndRemove('characters/Masked_elite_enemy.png');
     super.onDie();
     final rand = Random();
     if (rand.nextDouble() < 0.3) {

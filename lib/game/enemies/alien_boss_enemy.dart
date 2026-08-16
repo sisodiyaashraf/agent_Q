@@ -219,8 +219,8 @@ class AlienBossEnemy extends SimpleEnemy with BlockMovementCollision, GameFeelMi
 
   @override
   void onDie() {
-    SoundService.play('death.wav');
     GameFeel.triggerScreenShake(this, duration: 0.8, intensity: 8.0);
+    playDeathAnimationAndRemove('characters/Boss_alien_enemy.png');
     super.onDie();
     final rand = Random();
     if (rand.nextDouble() < 0.3) {
