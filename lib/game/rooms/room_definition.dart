@@ -60,10 +60,10 @@ class RoomDefinition {
     final List<Tile> tiles = [];
     final List<Vector2> corners = [];
 
-    // Player spawn: Left side for zombie world, center for others
+    // Player spawn: Left side for zombie world, floor aligned
     final playerSpawn = isZombieWorld
-        ? Vector2(100.0, WorldConfig.floorY - 105.0)
-        : Vector2((width / 2) * tileSize, (height / 2) * tileSize);
+        ? Vector2(100.0, WorldConfig.floorY - 131.0)
+        : Vector2((width / 2) * tileSize, WorldConfig.floorY - 131.0);
 
     for (int row = 0; row < height; row++) {
       for (int col = 0; col < width; col++) {

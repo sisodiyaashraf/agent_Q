@@ -33,7 +33,7 @@ class AgentQComponent extends SimplePlayer with BlockMovementCollision {
     required this.onAmmoChanged,
     required this.onDeath,
   }) : super(
-          size: Vector2(96, 105),
+          size: Vector2(120, 131),
           life: maxHealth,
           speed: 130.0,
           animation: SimpleDirectionAnimation(
@@ -113,8 +113,8 @@ class AgentQComponent extends SimplePlayer with BlockMovementCollision {
 
     add(
       RectangleHitbox(
-        size: Vector2(40, 85),
-        position: Vector2(28, 20),
+        size: Vector2(50, 105),
+        position: Vector2(35, 25),
       ),
     );
     await super.onLoad();
