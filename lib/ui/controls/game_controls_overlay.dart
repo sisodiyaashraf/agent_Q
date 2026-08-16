@@ -42,7 +42,17 @@ class GameControlsOverlay extends StatelessWidget {
                     onPressed: player.punch,
                     size: 54,
                   ),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: 14),
+                  // Dash Button (Dodge maneuver)
+                  _buildActionButton(
+                    label: 'DASH',
+                    icon: Icons.bolt,
+                    color: const Color(0xFF00E5FF).withValues(alpha: 0.25),
+                    borderColor: const Color(0xFF00E5FF),
+                    onPressed: player.dash,
+                    size: 54,
+                  ),
+                  const SizedBox(width: 14),
                   // Shoot Button (Primary Action - highlighted)
                   _buildActionButton(
                     label: 'SHOOT',
@@ -69,8 +79,8 @@ class GameControlsOverlay extends StatelessWidget {
     required double size,
     Color borderColor = Colors.white30,
   }) {
-    return GestureDetector(
-      onTapDown: (_) => onPressed(),
+    return Listener(
+      onPointerDown: (_) => onPressed(),
       child: Container(
         width: size,
         height: size,

@@ -17,7 +17,10 @@ class GameFeel {
 
   static void triggerScreenShake(GameComponent component, {double duration = 0.15, double intensity = 4.0}) {
     try {
-      component.gameRef.camera.shake(intensity: intensity, duration: duration);
+      component.gameRef.camera.shake(
+        intensity: intensity,
+        duration: Duration(milliseconds: (duration * 1000).toInt()),
+      );
     } catch (_) {}
   }
 }
@@ -86,13 +89,13 @@ class FloatingTextComponent extends PositionComponent {
       text: TextSpan(
         text: text,
         style: TextStyle(
-          color: color.withOpacity(opacity),
+          color: color.withValues(alpha: opacity),
           fontWeight: FontWeight.bold,
           fontSize: 13,
           fontFamily: 'Courier',
           shadows: [
             Shadow(
-              color: Colors.black.withOpacity(opacity),
+              color: Colors.black.withValues(alpha: opacity),
               offset: const Offset(1, 1),
               blurRadius: 1,
             ),

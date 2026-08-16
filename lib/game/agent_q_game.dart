@@ -11,6 +11,9 @@ import 'player/agent_q_component.dart';
 import 'rooms/game_asset_generator.dart';
 import 'rooms/room_definition.dart';
 import 'rooms/wave_manager.dart';
+import 'items/checkpoint_component.dart';
+import '../services/sound_service.dart';
+
 
 class AgentQGameWidget extends StatefulWidget {
   final int levelId;
@@ -142,6 +145,8 @@ class _AgentQGameWidgetState extends State<AgentQGameWidget> {
 
   void _winLevel() {
     if (_levelWon) return;
+    CheckpointState.clear(); // Reset checkpoints when level is cleared!
+    SoundService.play('level_complete.wav');
     _stopwatch.stop();
     _timer?.cancel();
     if (mounted) {
@@ -151,6 +156,7 @@ class _AgentQGameWidgetState extends State<AgentQGameWidget> {
         }
       });
     }
+
 
     final seconds = _stopwatch.elapsed.inSeconds;
     SaveService.unlockLevel(widget.levelId + 1);
@@ -267,7 +273,9 @@ class _AgentQGameWidgetState extends State<AgentQGameWidget> {
                     ),
                   ),
             player: AgentQComponent(
-              position: _roomDef.playerSpawn,
+              position: (CheckpointState.savedLevelId == widget.levelId && CheckpointState.savedPosition != null)
+                  ? CheckpointState.savedPosition!
+                  : _roomDef.playerSpawn,
               onHealthChanged: _onPlayerHealthChanged,
               onAmmoChanged: _onPlayerAmmoChanged,
               onDeath: _onPlayerDeath,
@@ -284,6 +292,7 @@ class _AgentQGameWidgetState extends State<AgentQGameWidget> {
             cameraConfig: CameraConfig(
               moveOnlyMapArea: true,
               zoom: calculatedZoom,
+              speed: 3.5,
             ),
             overlayBuilderMap: {
               'hud': (context, game) => HudOverlay(

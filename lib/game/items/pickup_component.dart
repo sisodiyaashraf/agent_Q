@@ -1,4 +1,5 @@
 import 'package:bonfire/bonfire.dart';
+import '../../services/sound_service.dart';
 import '../player/agent_q_component.dart';
 
 enum PickupType { health, ammo, shield }
@@ -13,6 +14,12 @@ class PickupComponent extends GameDecoration with Sensor {
           sprite: Sprite.load(_getAssetPath(type)),
           size: Vector2(20, 20),
         );
+
+  @override
+  Future<void> onLoad() async {
+    add(RectangleHitbox(size: Vector2(20, 20)));
+    await super.onLoad();
+  }
 
   static String _getAssetPath(PickupType type) {
     switch (type) {
@@ -51,8 +58,10 @@ class PickupComponent extends GameDecoration with Sensor {
       }
 
       if (collected) {
+        SoundService.play('pickup.wav');
         removeFromParent();
       }
     }
   }
 }
+

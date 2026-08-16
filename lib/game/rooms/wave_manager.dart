@@ -6,7 +6,9 @@ import '../enemies/soldier_enemy.dart';
 import '../enemies/alien_small_enemy.dart';
 import '../enemies/alien_boss_enemy.dart';
 import '../enemies/masked_elite_enemy.dart';
+import '../items/checkpoint_component.dart';
 import 'room_definition.dart';
+
 
 class WaveManagerComponent extends GameComponent {
   final RoomDefinition room;
@@ -25,6 +27,24 @@ class WaveManagerComponent extends GameComponent {
     required this.onAllWavesCleared,
     required this.onWaveStatusChanged,
   });
+
+  @override
+  Future<void> onLoad() async {
+    final isZombieWorld = room.world.id == 1;
+    if (isZombieWorld) {
+      // Spawn checkpoint flag at the exact horizontal midpoint of the map
+      final double midX = (room.gridWidth * room.tileSize) / 2.0;
+      final double checkpointY = WorldConfig.floorY - 30.0;
+      gameRef.add(
+        CheckpointComponent(
+          position: Vector2(midX, checkpointY),
+          levelId: room.level,
+        ),
+      );
+    }
+    await super.onLoad();
+  }
+
 
   @override
   void update(double dt) {
@@ -59,9 +79,19 @@ class WaveManagerComponent extends GameComponent {
         _waveInProgress = false;
       }
     } else {
-      // If we finished the current wave, trigger the next one or clear the level
+      // If we finished the current wave, check if player has traversed to trigger next wave
       if (_currentWaveIndex < room.waves.length) {
-        _startNextWave();
+        final isZombieWorld = room.world.id == 1;
+        double triggerX = 0.0;
+        if (isZombieWorld) {
+          final double segmentWidth = (room.gridWidth * room.tileSize) / (room.waves.length + 1);
+          triggerX = (_currentWaveIndex) * segmentWidth;
+        }
+
+        final player = gameRef.player;
+        if (player != null && !player.isDead && player.position.x >= triggerX) {
+          _startNextWave();
+        }
       } else {
         // All waves cleared!
         onAllWavesCleared();

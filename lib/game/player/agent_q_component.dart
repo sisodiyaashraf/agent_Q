@@ -2,8 +2,10 @@ import 'dart:math';
 import 'package:bonfire/bonfire.dart';
 import 'package:flutter/material.dart';
 import '../../core/constants/world_config.dart';
+import '../../services/sound_service.dart';
+import '../mixins/game_feel.dart';
 
-class AgentQComponent extends SimplePlayer with BlockMovementCollision {
+class AgentQComponent extends SimplePlayer with BlockMovementCollision, GameFeelMixin {
   static const double maxHealth = 100.0;
 
   final Function(double current, double max, double shield, double maxShield) onHealthChanged;
@@ -26,6 +28,21 @@ class AgentQComponent extends SimplePlayer with BlockMovementCollision {
   bool _isJumping = false;
   bool get isJumping => _isJumping;
   double _velocityY = 0.0;
+
+  // Overhauled movement physics variables
+  double _velocityX = 0.0;
+  double _inputX = 0.0;
+  double _footstepTimer = 0.0;
+
+  // Dash variables
+  bool _isDashing = false;
+  bool get isDashing => _isDashing;
+  double _dashTimer = 0.0;
+  double _dashCooldown = 0.0;
+
+  // Punch combo variables
+  int _punchCombo = 0;
+  double _lastPunchTime = 0.0;
 
   AgentQComponent({
     required super.position,
@@ -62,19 +79,12 @@ class AgentQComponent extends SimplePlayer with BlockMovementCollision {
   void onJoystickChangeDirectional(JoystickDirectionalEvent event) {
     if (isDead) return;
 
-    double targetAngle = event.radAngle;
-    if (event.directional != JoystickMoveDirectional.IDLE) {
-      final isMovingRight = cos(event.radAngle) > 0;
-      targetAngle = isMovingRight ? 0.0 : pi;
+    if (event.directional == JoystickMoveDirectional.IDLE) {
+      _inputX = 0.0;
+    } else {
+      _inputX = cos(event.radAngle) > 0 ? 1.0 : -1.0;
+      lastDirection = _inputX > 0 ? Direction.right : Direction.left;
     }
-
-    final horizontalEvent = JoystickDirectionalEvent(
-      directional: event.directional,
-      intensity: event.intensity,
-      radAngle: targetAngle,
-      isKeyboard: event.isKeyboard,
-    );
-    super.onJoystickChangeDirectional(horizontalEvent);
   }
 
   @override
@@ -85,6 +95,7 @@ class AgentQComponent extends SimplePlayer with BlockMovementCollision {
     );
 
     animation = SimpleDirectionAnimation(
+      enabledFlipX: true,
       idleRight: walkSheet.createAnimation(row: 1, stepTime: 0.15, from: 4, to: 5),
       runRight: SpriteAnimation.variableSpriteList([
         walkSheet.getSprite(1, 5),
@@ -122,8 +133,45 @@ class AgentQComponent extends SimplePlayer with BlockMovementCollision {
 
   @override
   void update(double dt) {
+    if (GameFeel.hitStopTimer > 0) {
+      return;
+    }
+
     super.update(dt);
     if (isDead) return;
+
+    // Smooth camera lookahead follow
+    if (hasGameRef) {
+      gameRef.camera.stop(); // stop hard tracking
+      final double lookaheadOffset = lastDirection == Direction.left ? -65.0 : 65.0;
+      final double targetCamX = position.x + size.x / 2 + lookaheadOffset;
+      final double targetCamY = position.y + size.y / 2 - 15.0;
+      gameRef.camera.moveTo(Vector2(targetCamX, targetCamY));
+    }
+
+    // Decelerate dash cooldown
+    if (_dashCooldown > 0) {
+      _dashCooldown -= dt;
+    }
+
+    // Handle Dash state
+    if (_isDashing) {
+      _dashTimer -= dt;
+      speed = 340.0;
+      if (lastDirection == Direction.left) {
+        moveLeft();
+      } else {
+        moveRight();
+      }
+      if (_dashTimer <= 0) {
+        _isDashing = false;
+        speed = 130.0;
+      }
+      return; // Skip normal movement/physics while dashing
+    }
+
+    // Apply knockback friction/movement from GameFeelMixin
+    updateKnockback(dt);
 
     if (_isReloading) {
       _reloadTimer -= dt;
@@ -138,33 +186,79 @@ class AgentQComponent extends SimplePlayer with BlockMovementCollision {
       _fireCooldown -= dt;
     }
 
-    // Apply gravity and jumping calculations
+    // Apply gravity and jumping calculations (overhauled jump arc easing)
     if (_isJumping) {
-      _velocityY += WorldConfig.gravity * dt;
+      // Apply stronger gravity on descent than ascent (snappy, weighted feel)
+      final double currentGravity = _velocityY > 0 ? WorldConfig.gravity * 1.7 : WorldConfig.gravity;
+      _velocityY += currentGravity * dt;
       position.y += _velocityY * dt;
       if (position.y >= WorldConfig.floorY - size.y) {
         position.y = WorldConfig.floorY - size.y;
         _velocityY = 0.0;
         _isJumping = false;
+        SoundService.play('land.wav');
       }
     } else {
-      // Force Y constraint
       position.y = WorldConfig.floorY - size.y;
+    }
+
+    // Overhauled movement physics: Acceleration & Deceleration
+    final double targetVelocityX = _inputX * 130.0;
+    if (_inputX != 0) {
+      // Accelerate towards target speed
+      _velocityX += (targetVelocityX - _velocityX) * (1.0 - exp(-11.0 * dt));
+    } else {
+      // Slide/decelerate to a stop
+      _velocityX += (0.0 - _velocityX) * (1.0 - exp(-16.0 * dt));
+    }
+
+    // Apply horizontal velocity
+    if (_velocityX.abs() > 3.0) {
+      speed = _velocityX.abs();
+      if (_velocityX > 0) {
+        moveRight();
+      } else {
+        moveLeft();
+      }
+
+      // Footstep loop SFX triggering
+      if (!_isJumping) {
+        _footstepTimer -= dt;
+        if (_footstepTimer <= 0) {
+          SoundService.play('footstep.wav');
+          _footstepTimer = 0.32; // Play step audio every 320ms of running
+        }
+      }
+    } else {
+      _velocityX = 0.0;
+      _footstepTimer = 0.0;
+      if (!_isJumping) {
+        idle();
+      }
+    }
+
+    // Reset combo punch status if idle for too long
+    final double now = DateTime.now().millisecondsSinceEpoch / 1000.0;
+    if (now - _lastPunchTime > 0.55) {
+      _punchCombo = 0;
     }
 
     // Keep player within horizontal map boundaries
     final mapWidth = gameRef.map.size.x;
     if (position.x < 0) {
       position.x = 0;
+      _velocityX = 0.0;
     } else if (position.x > mapWidth - size.x) {
       position.x = mapWidth - size.x;
+      _velocityX = 0.0;
     }
   }
 
   void jump() {
-    if (isDead || _isJumping) return;
+    if (isDead || _isJumping || _isDashing) return;
     _isJumping = true;
-    _velocityY = -350.0; // Jump force
+    _velocityY = -360.0; // Snappy jump force
+    SoundService.play('jump.wav');
 
     // Play jump animation (upward facing stand frame)
     final walkImage = Flame.images.fromCache('characters/walk_cycle_agent_Q.png');
@@ -178,54 +272,102 @@ class AgentQComponent extends SimplePlayer with BlockMovementCollision {
     animation?.playOnce(jumpAnim, flipX: lastDirection == Direction.left);
   }
 
-  void punch() {
-    if (isDead || _isJumping) return;
+  void dash() {
+    if (isDead || _isDashing || _isJumping || _dashCooldown > 0) return;
+    _isDashing = true;
+    _dashTimer = 0.18; // Short dash duration (180ms)
+    _dashCooldown = 0.6; // 600ms cooldown before next dash
+    SoundService.play('jump.wav');
 
-    // Play punch swing animation using row 2 columns 0-2
+    // Add immediate dash horizontal speed speed boost
+    _velocityX = lastDirection == Direction.left ? -340.0 : 340.0;
+
+    // Squish scale effect to simulate momentum stretch
+    add(
+      ScaleEffect.to(
+        Vector2(1.25, 0.75),
+        EffectController(duration: 0.08, reverseDuration: 0.1),
+      ),
+    );
+  }
+
+  void punch() {
+    if (isDead || _isJumping || _isDashing) return;
+
+    final double now = DateTime.now().millisecondsSinceEpoch / 1000.0;
+    if (now - _lastPunchTime <= 0.55) {
+      _punchCombo = (_punchCombo + 1) % 3;
+    } else {
+      _punchCombo = 0;
+    }
+    _lastPunchTime = now;
+
     final walkImage = Flame.images.fromCache('characters/walk_cycle_agent_Q.png');
     final walkSheet = SpriteSheet(
       image: walkImage,
       srcSize: Vector2(677 / 6, 369 / 3),
     );
-    final punchAnim = SpriteAnimation.variableSpriteList([
-      walkSheet.getSprite(2, 0),
-      walkSheet.getSprite(2, 1),
-      walkSheet.getSprite(2, 2),
-    ], stepTimes: [0.06, 0.06, 0.06]);
+
+    // If combo is 2 (3rd hit), play heavy punch cols 3-5, else normal punch cols 0-2
+    SpriteAnimation punchAnim;
+    if (_punchCombo == 2) {
+      punchAnim = SpriteAnimation.variableSpriteList([
+        walkSheet.getSprite(2, 3),
+        walkSheet.getSprite(2, 4),
+        walkSheet.getSprite(2, 5),
+      ], stepTimes: [0.05, 0.05, 0.05]);
+    } else {
+      punchAnim = SpriteAnimation.variableSpriteList([
+        walkSheet.getSprite(2, 0),
+        walkSheet.getSprite(2, 1),
+        walkSheet.getSprite(2, 2),
+      ], stepTimes: [0.05, 0.05, 0.05]);
+    }
 
     animation?.playOnce(punchAnim, flipX: lastDirection == Direction.left);
+    SoundService.play('punch.wav');
 
     final Future<SpriteAnimation> impactStarAnim = Future.value(
       SpriteAnimation.fromFrameData(
         Flame.images.fromCache('impact_star.png'),
         SpriteAnimationData.sequenced(
           amount: 3,
-          stepTime: 0.08,
+          stepTime: 0.07,
           textureSize: Vector2(32, 32),
           loop: false,
         ),
       ),
     );
 
-    // Delay the melee hit-detection and impact star to align with the strike frame specifically (frame 1)
-    Future.delayed(const Duration(milliseconds: 60), () {
+    Future.delayed(const Duration(milliseconds: 50), () {
       if (isDead) return;
+
+      final isComboHit = _punchCombo == 2;
+      final double punchDamage = isComboHit ? 30.0 : 15.0;
+
       simpleAttackMelee(
-        damage: 15.0,
-        size: Vector2(50, 50),
+        damage: punchDamage,
+        size: Vector2(60, 60),
         withPush: true,
         animationRight: impactStarAnim,
       );
+
+      // Extra feel for the final combo hit
+      if (isComboHit) {
+        GameFeel.triggerHitStop(0.08); // 80ms freeze-frame
+        GameFeel.triggerScreenShake(this, duration: 0.15, intensity: 5.0);
+      }
     });
   }
 
   void shoot() {
-    if (isDead || _isReloading || _fireCooldown > 0) return;
+    if (isDead || _isReloading || _fireCooldown > 0 || _isDashing) return;
 
     if (ammo <= 0) {
       _isReloading = true;
       _reloadTimer = _reloadTime;
       onAmmoChanged(ammo, maxAmmo, _isReloading);
+      SoundService.play('reload.wav');
       return;
     }
 
@@ -276,6 +418,7 @@ class AgentQComponent extends SimplePlayer with BlockMovementCollision {
     }
 
     animation?.playOnce(shootAnim, flipX: isLeft);
+    SoundService.play('shoot.wav');
 
     ammo--;
     onAmmoChanged(ammo, maxAmmo, _isReloading);
@@ -284,16 +427,16 @@ class AgentQComponent extends SimplePlayer with BlockMovementCollision {
       _isReloading = true;
       _reloadTimer = _reloadTime;
       onAmmoChanged(ammo, maxAmmo, _isReloading);
+      SoundService.play('reload.wav');
     }
 
-    // Delay bullet spawn slightly to visually sync with the shooting muzzle flash frame
-    Future.delayed(const Duration(milliseconds: 150), () {
+    Future.delayed(const Duration(milliseconds: 100), () {
       if (isDead) return;
       simpleAttackRangeByAngle(
         angle: angle,
         damage: 20.0,
         size: Vector2(8, 8),
-        speed: 350.0,
+        speed: 370.0,
         attackFrom: AttackOriginEnum.PLAYER_OR_ALLY,
         animation: Future.value(
           SpriteAnimation.fromFrameData(
@@ -325,7 +468,7 @@ class AgentQComponent extends SimplePlayer with BlockMovementCollision {
 
   @override
   void onReceiveDamage(AttackOriginEnum attacker, double damage, dynamic identify) {
-    if (isDead) return;
+    if (isDead || _isDashing) return;
 
     if (shield > 0) {
       if (shield >= damage) {
@@ -337,6 +480,21 @@ class AgentQComponent extends SimplePlayer with BlockMovementCollision {
       }
     }
 
+    // Play hit sound
+    SoundService.play('hit.wav');
+
+    // Trigger visual hit-stop & shake for feedback
+    GameFeel.triggerHitStop(0.05); // 50ms freeze on hit
+    GameFeel.triggerScreenShake(this, duration: 0.12, intensity: 3.5);
+
+    // Spawn damage floating text
+    spawnDamageText(damage, color: Colors.blueAccent);
+
+    // Add physical knockback push-back
+    final attackerPos = (identify is GameComponent) ? identify.position.x : position.x - 20;
+    final fromLeft = attackerPos < position.x;
+    applyKnockback(160.0, fromLeft);
+
     // Add brief red tint effect
     final colorEffect = ColorEffect(
       const Color(0xFFFF0000),
@@ -347,7 +505,7 @@ class AgentQComponent extends SimplePlayer with BlockMovementCollision {
     // Briefly squish character height to simulate hit impact force
     add(
       ScaleEffect.to(
-        Vector2(1.1, 0.9),
+        Vector2(1.15, 0.85),
         EffectController(duration: 0.08, reverseDuration: 0.08),
       ),
     );
@@ -358,6 +516,7 @@ class AgentQComponent extends SimplePlayer with BlockMovementCollision {
 
   @override
   void onDie() {
+    SoundService.play('death.wav');
     super.onDie();
     onDeath();
   }
