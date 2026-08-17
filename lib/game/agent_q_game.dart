@@ -13,6 +13,7 @@ import 'rooms/room_definition.dart';
 import 'rooms/wave_manager.dart';
 import 'items/checkpoint_component.dart';
 import '../services/sound_service.dart';
+import '../services/music_service.dart';
 
 
 class AgentQGameWidget extends StatefulWidget {
@@ -87,6 +88,10 @@ class _AgentQGameWidgetState extends State<AgentQGameWidget> {
 
   Future<void> _initGame() async {
     _roomDef = RoomDefinition.generate(widget.levelId);
+
+    // Play the correct background music track for this world
+    final trackName = MusicService.instance.getTrackForWorld(_roomDef.world.id);
+    MusicService.instance.play(trackName);
 
     // Dynamic generation of tileset & caching in Flame
     final world = _roomDef.world;
@@ -337,39 +342,113 @@ class _AgentQGameWidgetState extends State<AgentQGameWidget> {
   }
 
   Widget _buildPauseDialog(BonfireGame game) {
-    return AlertDialog(
-      backgroundColor: const Color(0xFF0F121F),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      title: const Text(
-        'PAUSED',
-        style: TextStyle(color: Colors.white, letterSpacing: 2),
-      ),
-      content: const Text(
-        'Resume combat or return to Sector map?',
-        style: TextStyle(color: Colors.white70),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () {
-            game.resume();
-            Navigator.pop(context);
-          },
-          child: const Text(
-            'RESUME',
-            style: TextStyle(color: Color(0xFF00E5FF)),
+    return StatefulBuilder(
+      builder: (context, setPauseState) {
+        final isMusicMuted = MusicService.instance.isMuted;
+        final musicVol = MusicService.instance.volume;
+        final isSfxMuted = MusicService.instance.sfxMuted;
+
+        return AlertDialog(
+          backgroundColor: const Color(0xFF0F121F),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: const BorderSide(color: Color(0xFF00E5FF), width: 1.5),
           ),
-        ),
-        TextButton(
-          onPressed: () {
-            Navigator.pop(context);
-            Navigator.pop(context);
-          },
-          child: const Text(
-            'RETREAT',
-            style: TextStyle(color: Colors.redAccent),
+          title: const Text(
+            'PAUSED',
+            style: TextStyle(color: Colors.white, letterSpacing: 2, fontSize: 16, fontWeight: FontWeight.bold),
           ),
-        ),
-      ],
+          content: SizedBox(
+            width: 280,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Resume combat or return to Sector map?',
+                  style: TextStyle(color: Colors.white70, fontSize: 12),
+                ),
+                const SizedBox(height: 16),
+                const Divider(color: Colors.white10),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'MUSIC',
+                      style: TextStyle(color: Colors.white60, fontSize: 10, fontWeight: FontWeight.bold),
+                    ),
+                    IconButton(
+                      icon: Icon(
+                        isMusicMuted ? Icons.volume_off : Icons.volume_up,
+                        color: isMusicMuted ? Colors.redAccent : const Color(0xFF00E5FF),
+                        size: 18,
+                      ),
+                      onPressed: () async {
+                        await MusicService.instance.setMuted(!isMusicMuted);
+                        setPauseState(() {});
+                      },
+                    ),
+                  ],
+                ),
+                Slider(
+                  value: musicVol,
+                  activeColor: const Color(0xFF00E5FF),
+                  inactiveColor: Colors.white12,
+                  onChanged: isMusicMuted
+                      ? null
+                      : (val) async {
+                          await MusicService.instance.setVolume(val);
+                          setPauseState(() {});
+                        },
+                ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'SFX AUDIO',
+                      style: TextStyle(color: Colors.white60, fontSize: 10, fontWeight: FontWeight.bold),
+                    ),
+                    Switch(
+                      value: !isSfxMuted,
+                      activeThumbColor: const Color(0xFF00E5FF),
+                      activeTrackColor: const Color(0xFF00E5FF).withValues(alpha: 0.3),
+                      inactiveThumbColor: Colors.redAccent,
+                      inactiveTrackColor: Colors.redAccent.withValues(alpha: 0.3),
+                      onChanged: (val) async {
+                        await MusicService.instance.setSfxMuted(!val);
+                        setPauseState(() {});
+                      },
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                game.resume();
+                Navigator.pop(context);
+              },
+              child: const Text(
+                'RESUME',
+                style: TextStyle(color: Color(0xFF00E5FF), fontWeight: FontWeight.bold),
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                Navigator.pop(context);
+              },
+              child: const Text(
+                'RETREAT',
+                style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 

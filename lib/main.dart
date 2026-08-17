@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'services/save_service.dart';
+import 'services/music_service.dart';
 import 'ui/splash/splash_screen.dart';
 
 void main() async {
@@ -8,6 +9,9 @@ void main() async {
 
   // Initialize shared preferences progression service
   await SaveService.init();
+
+  // Initialize background music service
+  await MusicService.instance.init();
 
   // Force landscape orientation for optimal twin-stick play area
   await SystemChrome.setPreferredOrientations([

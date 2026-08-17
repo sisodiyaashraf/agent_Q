@@ -42,5 +42,6 @@ flutter:
     - assets/images/hud_and_ui_elements/
     - assets/images/pickups_and_powerups/
     - assets/audio/
+    - assets/audio/music/
 
 

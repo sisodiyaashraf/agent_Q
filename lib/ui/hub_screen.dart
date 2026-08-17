@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../core/constants/world_config.dart';
 import '../game/agent_q_game.dart';
 import '../services/save_service.dart';
+import '../services/music_service.dart';
 
 class HubScreen extends StatefulWidget {
   const HubScreen({super.key});
@@ -19,6 +20,8 @@ class _HubScreenState extends State<HubScreen> with SingleTickerProviderStateMix
     super.initState();
     _tabController = TabController(length: WorldConfig.worlds.length, vsync: this);
     _loadProgress();
+    // Play Hub music theme
+    MusicService.instance.play('hub_theme.ogg');
   }
 
   void _loadProgress() {
@@ -56,6 +59,10 @@ class _HubScreenState extends State<HubScreen> with SingleTickerProviderStateMix
           ],
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.settings, color: Colors.white, size: 20),
+            onPressed: _showSettingsDialog,
+          ),
           IconButton(
             icon: const Icon(Icons.refresh, color: Colors.white60, size: 20),
             onPressed: () async {
@@ -231,6 +238,114 @@ class _HubScreenState extends State<HubScreen> with SingleTickerProviderStateMix
         builder: (context) => AgentQGameWidget(levelId: levelId),
       ),
     )
-        .then((_) => _loadProgress());
+        .then((_) {
+      _loadProgress();
+      // Resume Hub Theme music
+      MusicService.instance.play('hub_theme.ogg');
+    });
+  }
+
+  void _showSettingsDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            final isMusicMuted = MusicService.instance.isMuted;
+            final musicVol = MusicService.instance.volume;
+            final isSfxMuted = MusicService.instance.sfxMuted;
+
+            return AlertDialog(
+              backgroundColor: const Color(0xFF0F121F),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: const BorderSide(color: Color(0xFF00E5FF), width: 1.5),
+              ),
+              title: const Row(
+                children: [
+                  Icon(Icons.tune, color: Color(0xFF00E5FF), size: 20),
+                  SizedBox(width: 8),
+                  Text(
+                    'SYSTEM SETTINGS',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 2,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'MUSIC VOLUME',
+                        style: TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.bold),
+                      ),
+                      IconButton(
+                        icon: Icon(
+                          isMusicMuted ? Icons.volume_off : Icons.volume_up,
+                          color: isMusicMuted ? Colors.redAccent : const Color(0xFF00E5FF),
+                          size: 20,
+                        ),
+                        onPressed: () async {
+                          await MusicService.instance.setMuted(!isMusicMuted);
+                          setStateDialog(() {});
+                        },
+                      ),
+                    ],
+                  ),
+                  Slider(
+                    value: musicVol,
+                    activeColor: const Color(0xFF00E5FF),
+                    inactiveColor: Colors.white12,
+                    onChanged: isMusicMuted
+                        ? null
+                        : (val) async {
+                            await MusicService.instance.setVolume(val);
+                            setStateDialog(() {});
+                          },
+                  ),
+                  const Divider(color: Colors.white10, height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'SFX AUDIO',
+                        style: TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.bold),
+                      ),
+                      Switch(
+                        value: !isSfxMuted,
+                        activeThumbColor: const Color(0xFF00E5FF),
+                        activeTrackColor: const Color(0xFF00E5FF).withValues(alpha: 0.3),
+                        inactiveThumbColor: Colors.redAccent,
+                        inactiveTrackColor: Colors.redAccent.withValues(alpha: 0.3),
+                        onChanged: (val) async {
+                          await MusicService.instance.setSfxMuted(!val);
+                          setStateDialog(() {});
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text(
+                    'CLOSE',
+                    style: TextStyle(color: Color(0xFF00E5FF), fontWeight: FontWeight.bold, letterSpacing: 1),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 }
