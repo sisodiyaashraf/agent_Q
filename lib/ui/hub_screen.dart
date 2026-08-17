@@ -234,8 +234,20 @@ class _HubScreenState extends State<HubScreen> with SingleTickerProviderStateMix
   void _startMission(int levelId) {
     Navigator.of(context)
         .push(
-      MaterialPageRoute(
-        builder: (context) => AgentQGameWidget(levelId: levelId),
+      PageRouteBuilder(
+        transitionDuration: const Duration(milliseconds: 350),
+        pageBuilder: (context, animation, secondaryAnimation) => AgentQGameWidget(levelId: levelId),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          final scaleTween = Tween<double>(begin: 0.88, end: 1.0).chain(CurveTween(curve: Curves.easeInOutCubic));
+          final opacityTween = Tween<double>(begin: 0.0, end: 1.0).chain(CurveTween(curve: Curves.easeInOut));
+          return ScaleTransition(
+            scale: animation.drive(scaleTween),
+            child: FadeTransition(
+              opacity: animation.drive(opacityTween),
+              child: child,
+            ),
+          );
+        },
       ),
     )
         .then((_) {

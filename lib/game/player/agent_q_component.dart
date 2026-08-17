@@ -33,6 +33,7 @@ class AgentQComponent extends SimplePlayer with BlockMovementCollision, GameFeel
   double _velocityX = 0.0;
   double _inputX = 0.0;
   double _footstepTimer = 0.0;
+  double _bobTimer = 0.0;
 
   // Dash variables
   bool _isDashing = false;
@@ -188,6 +189,7 @@ class AgentQComponent extends SimplePlayer with BlockMovementCollision, GameFeel
 
     // Apply gravity and jumping calculations (overhauled jump arc easing)
     if (_isJumping) {
+      _bobTimer = 0.0;
       // Apply stronger gravity on descent than ascent (snappy, weighted feel)
       final double currentGravity = _velocityY > 0 ? WorldConfig.gravity * 1.7 : WorldConfig.gravity;
       _velocityY += currentGravity * dt;
@@ -197,6 +199,13 @@ class AgentQComponent extends SimplePlayer with BlockMovementCollision, GameFeel
         _velocityY = 0.0;
         _isJumping = false;
         SoundService.play('land.wav');
+        // Squash on land
+        add(
+          ScaleEffect.to(
+            Vector2(1.2, 0.8),
+            EffectController(duration: 0.08, reverseDuration: 0.08),
+          ),
+        );
       }
     } else {
       position.y = WorldConfig.floorY - size.y;
@@ -228,12 +237,21 @@ class AgentQComponent extends SimplePlayer with BlockMovementCollision, GameFeel
           SoundService.play('footstep.wav');
           _footstepTimer = 0.32; // Play step audio every 320ms of running
         }
+        // Run bobbing scale effect
+        if (!_isDashing && children.whereType<ScaleEffect>().isEmpty) {
+          _bobTimer += dt * 12.0;
+          scale = Vector2(1.0, 1.0 + sin(_bobTimer) * 0.05);
+        }
       }
     } else {
       _velocityX = 0.0;
       _footstepTimer = 0.0;
+      _bobTimer = 0.0;
       if (!_isJumping) {
         idle();
+        if (children.whereType<ScaleEffect>().isEmpty) {
+          scale = Vector2.all(1.0);
+        }
       }
     }
 
@@ -270,6 +288,14 @@ class AgentQComponent extends SimplePlayer with BlockMovementCollision, GameFeel
       walkSheet.getSprite(0, 5),
     ], stepTimes: [1.0]);
     animation?.playOnce(jumpAnim, flipX: lastDirection == Direction.left);
+
+    // Stretch on jump start
+    add(
+      ScaleEffect.to(
+        Vector2(0.85, 1.25),
+        EffectController(duration: 0.12, reverseDuration: 0.12),
+      ),
+    );
   }
 
   void dash() {
